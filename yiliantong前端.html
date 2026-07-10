@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>译链通 — 翻译作品区块链版权存证系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            font-family: 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+        }
+        .header {
+            background: rgba(255,255,255,0.04);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 14px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 20px;
+            color: #a78bfa;
+        }
+        .header .subtitle {
+            font-size: 12px;
+            color: #777;
+            margin-top: 2px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .mode-toggle {
+            display: flex;
+        }
+        .mode-toggle button {
+            padding: 6px 16px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #888;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        .mode-toggle button:first-child { border-radius: 6px 0 0 6px; }
+        .mode-toggle button:last-child { border-radius: 0 6px 6px 0; }
+        .mode-toggle button.active {
+            background: rgba(167, 139, 250, 0.2);
+            border-color: #a78bfa;
+            color: #a78bfa;
+        }
+        .connect-btn {
+            padding: 8px 20px;
+            border: 1px solid #a78bfa;
+            background: transparent;
+            color: #a78bfa;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        .connect-btn:hover { background: #a78bfa; color: #fff; }
+        .connect-btn.connected { border-color: #34d399; color: #34d399; }
+        .connect-btn.connected:hover { background: #34d399; color: #fff; }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .card h2 {
+            color: #60a5fa;
+            font-size: 17px;
+            margin-bottom: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus {
+            border-color: #a78bfa;
+        }
+        input::placeholder { color: #555; }
+        button.action-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            background: #7c3aed;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button.action-btn:hover { background: #6d28d9; }
+        button.action-btn.secondary {
+            background: rgba(96, 165, 250, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+        button.action-btn.secondary:hover { background: rgba(96, 165, 250, 0.25); }
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-row button { flex: 1; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.8;
+            word-break: break-all;
+            min-height: 0;
+        }
+        .result:empty { display: none; }
+        .result .success { color: #34d399; }
+        .result .fail { color: #ef4444; }
+        .result .label { color: #888; }
+        .result .value { color: #e0e0e0; font-family: 'Consolas', monospace; }
+
+        .status-bar {
+            grid-column: 1 / -1;
+            padding: 10px 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #888;
+            text-align: center;
+        }
+        .status-bar.active { color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #444;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>🔗 译链通</h1>
+        <div class="subtitle">翻译作品区块链版权存证与授权系统</div>
+    </div>
+    <div class="header-right">
+        <div class="mode-toggle">
+            <button id="modeDemo" class="active" onclick="switchMode('demo')">演示模式</button>
+            <button id="modeReal" onclick="switchMode('real')">链上模式</button>
+        </div>
+        <button class="connect-btn" id="connectBtn" onclick="connectWallet()">连接钱包</button>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- 1. 登记翻译作品 -->
+    <div class="card">
+        <h2>📝 登记翻译作品</h2>
+        <input id="regTitle" placeholder="译作标题">
+        <input id="regSourceRef" placeholder="原作ISBN">
+        <input id="regCID" placeholder="译文IPFS CID">
+        <input id="regHash" placeholder="SHA-256哈希(0x开头)">
+        <select id="regSourceLang">
+            <option value="EN">EN 英语</option>
+            <option value="ZH">ZH 中文</option>
+            <option value="JA">JA 日语</option>
+            <option value="FR">FR 法语</option>
+            <option value="DE">DE 德语</option>
+            <option value="ES">ES 西班牙语</option>
+        </select>
+        <select id="regTargetLang">
+            <option value="ZH">ZH 中文</option>
+            <option value="EN">EN 英语</option>
+            <option value="JA">JA 日语</option>
+            <option value="FR">FR 法语</option>
+            <option value="DE">DE 德语</option>
+            <option value="ES">ES 西班牙语</option>
+        </select>
+        <input id="regParentId" placeholder="上一版本ID(初版填0)" value="0">
+        <button class="action-btn" onclick="registerWork()">登记存证</button>
+        <div class="result" id="regResult"></div>
+    </div>
+
+    <!-- 2. 查询与验证 -->
+    <div class="card">
+        <h2>🔍 查询与验证</h2>
+        <input id="queryWorkId" placeholder="作品ID">
+        <button class="action-btn secondary" onclick="queryWork()">查询作品信息</button>
+        <div class="result" id="queryResult"></div>
+        <input id="verifyHash" placeholder="待验证哈希" style="margin-top:10px;">
+        <button class="action-btn secondary" onclick="verifyCopyright()">验证完整性</button>
+        <div class="result" id="verifyResult"></div>
+    </div>
+
+    <!-- 3. 授予许可 -->
+    <div class="card">
+        <h2>📜 授予翻译许可</h2>
+        <input id="licWorkId" placeholder="作品ID">
+        <input id="licLicensee" placeholder="被授权人地址(0x...)">
+        <select id="licTerritory">
+            <option value="CN">CN 中国</option>
+            <option value="US">US 美国</option>
+            <option value="EU">EU 欧盟</option>
+            <option value="WORLDWIDE">WORLDWIDE 全球</option>
+        </select>
+        <select id="licUsage">
+            <option value="commercial">commercial 商业</option>
+            <option value="educational">educational 教育</option>
+            <option value="non-commercial">non-commercial 非商业</option>
+        </select>
+        <select id="licExclusive">
+            <option value="false">非独家</option>
+            <option value="true">独家</option>
+        </select>
+        <input id="licDuration" placeholder="授权天数(0=永久)" value="365">
+        <button class="action-btn" onclick="grantLicense()">授予许可</button>
+        <div class="result" id="licResult"></div>
+    </div>
+
+    <!-- 4. 版本链与索引查询 -->
+    <div class="card">
+        <h2>🔗 版本链与索引查询</h2>
+        <input id="chainWorkId" placeholder="作品ID">
+        <div class="btn-row">
+            <button class="action-btn secondary" onclick="getVersionChain()">查询版本链</button>
+            <button class="action-btn secondary" onclick="getWorkLicenses()">查询许可列表</button>
+        </div>
+        <div class="result" id="chainResult"></div>
+    </div>
+
+    <!-- 5. 译者作品索引 -->
+    <div class="card">
+        <h2>📋 译者作品索引</h2>
+        <input id="authorAddr" placeholder="译者钱包地址(0x...)">
+        <button class="action-btn secondary" onclick="getAuthorWorks()">查询译者所有作品</button>
+        <div class="result" id="authorResult"></div>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="status-bar" id="statusBar">
+        当前为演示模式 — 数据存储在本地浏览器中，用于概念验证展示
+    </div>
+</div>
+
+<div class="footer">
+    译链通 · TranslationCopyright DApp · 基于 IPFS + 以太坊智能合约 · 概念验证原型 v1.0
+</div>
+
+<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+<script>
+// ============ 合约 ABI ============
+const CONTRACT_ABI = [
+    {"inputs":[{"name":"_title","type":"string"},{"name":"_sourceRef","type":"string"},{"name":"_translationCID","type":"string"},{"name":"_contentHash","type":"bytes32"},{"name":"_sourceLang","type":"string"},{"name":"_targetLang","type":"string"},{"name":"_parentWorkId","type":"uint256"}],"name":"registerWork","outputs":[{"name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"name":"_workId","type":"uint256"},{"name":"_licensee","type":"address"},{"name":"_territory","type":"string"},{"name":"_usageType","type":"string"},{"name":"_isExclusive","type":"bool"},{"name":"_durationDays","type":"uint256"}],"name":"grantLicense","outputs":[{"name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"name":"_licenseId","type":"uint256"}],"name":"revokeLicense","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"name":"_workId","type":"uint256"},{"name":"_contentHash","type":"bytes32"}],"name":"verifyCopyright","outputs":[{"name":"isOwner","type":"bool"},{"name":"hashMatch","type":"bool"},{"name":"author","type":"address"},{"name":"timestamp","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"name":"_workId","type":"uint256"}],"name":"getVersionChain","outputs":[{"name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"name":"_workId","type":"uint256"}],"name":"getWork","outputs":[{"name":"title","type":"string"},{"name":"sourceRef","type":"string"},{"name":"translationCID","type":"string"},{"name":"contentHash","type":"bytes32"},{"name":"sourceLang","type":"string"},{"name":"targetLang","type":"string"},{"name":"parentWorkId","type":"uint256"},{"name":"author","type":"address"},{"name":"timestamp","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"name":"_licenseId","type":"uint256"}],"name":"getLicense","outputs":[{"name":"workId","type":"uint256"},{"name":"licensor","type":"address"},{"name":"licensee","type":"address"},{"name":"territory","type":"string"},{"name":"usageType","type":"string"},{"name":"isExclusive","type":"bool"},{"name":"startDate","type":"uint256"},{"name":"endDate","type":"uint256"},{"name":"isActive","type":"bool"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"name":"_author","type":"address"}],"name":"getAuthorWorks","outputs":[{"name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"name":"_workId","type":"uint256"}],"name":"getWorkLicenses","outputs":[{"name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"}
+];
+
+const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+// ============ 状态管理 ============
+let currentMode = 'demo';
+let contract = null;
+let signer = null;
+let userAddress = null;
+
+// 演示模式数据
+let works = {};
+let licenses = {};
+let authorWorks = {};
+let versionChains = {};
+let workLicenses = {};
+let workCount = 0;
+let licenseCount = 0;
+const DEMO_ADDRESS = "0x5B38Da6a701c568545dCfcB03FcB875f56beddC4";
+
+// ============ 模式切换 ============
+function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('modeDemo').classList.toggle('active', mode === 'demo');
+    document.getElementById('modeReal').classList.toggle('active', mode === 'real');
+    const bar = document.getElementById('statusBar');
+    const btn = document.getElementById('connectBtn');
+    if (mode === 'demo') {
+        bar.textContent = '当前为演示模式 — 数据存储在本地浏览器中，用于概念验证展示';
+        bar.classList.remove('active');
+        userAddress = DEMO_ADDRESS;
+        btn.textContent = '演示账户';
+        btn.classList.add('connected');
+    } else {
+        // 切换到链上模式，重置按钮并尝试连接 MetaMask
+        userAddress = null;
+        contract = null;
+        signer = null;
+        btn.textContent = '连接钱包';
+        btn.classList.remove('connected');
+        bar.textContent = '未连接钱包 — 请点击右上角连接 MetaMask';
+        bar.classList.remove('active');
+        // 自动尝试连接
+        connectWallet();
+    }
+}
+
+// ============ 钱包连接 ============
+async function connectWallet() {
+    if (currentMode === 'demo') {
+        userAddress = DEMO_ADDRESS;
+        document.getElementById('connectBtn').textContent = '演示账户';
+        document.getElementById('connectBtn').classList.add('connected');
+        return;
+    }
+    if (typeof window.ethereum === 'undefined') {
+        alert('请先安装 MetaMask 浏览器插件');
+        return;
+    }
+    try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAddress = accounts[0];
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        document.getElementById('connectBtn').textContent = `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+        document.getElementById('connectBtn').classList.add('connected');
+        switchMode('real');
+    } catch (err) {
+        alert('连接失败: ' + err.message);
+    }
+}
+
+function showResult(id, html) {
+    document.getElementById(id).innerHTML = html;
+}
+
+function formatTime(ts) {
+    return new Date(ts * 1000).toLocaleString('zh-CN');
+}
+
+// ============ 登记作品 ============
+async function registerWork() {
+    const title = document.getElementById('regTitle').value;
+    const sourceRef = document.getElementById('regSourceRef').value;
+    const cid = document.getElementById('regCID').value;
+    const hash = document.getElementById('regHash').value;
+    const sourceLang = document.getElementById('regSourceLang').value;
+    const targetLang = document.getElementById('regTargetLang').value;
+    const parentId = parseInt(document.getElementById('regParentId').value);
+
+    if (!title || !hash) {
+        showResult('regResult', '<span class="fail">⚠ 请至少填写标题和哈希</span>');
+        return;
+    }
+
+    try {
+        if (currentMode === 'demo') {
+            workCount++;
+            const id = workCount;
+            const addr = userAddress || DEMO_ADDRESS;
+            works[id] = {
+                title, sourceRef, cid, hash, sourceLang, targetLang, parentId,
+                author: addr, timestamp: Math.floor(Date.now()/1000)
+            };
+            if (parentId > 0) {
+                if (!versionChains[parentId]) versionChains[parentId] = [];
+                versionChains[parentId].push(id);
+            }
+            if (!authorWorks[addr]) authorWorks[addr] = [];
+            authorWorks[addr].push(id);
+            if (!workLicenses[id]) workLicenses[id] = [];
+            showResult('regResult', `<span class="success">✅ 登记成功！作品ID: ${id}</span><br>
+                <span class="label">标题:</span> <span class="value">${title}</span><br>
+                <span class="label">语言对:</span> <span class="value">${sourceLang} → ${targetLang}</span><br>
+                <span class="label">版权持有者:</span> <span class="value">${addr}</span>`);
+        } else {
+            const tx = await contract.registerWork(title, sourceRef, cid, hash, sourceLang, targetLang, parentId);
+            const receipt = await tx.wait();
+            showResult('regResult', `<span class="success">✅ 交易已确认！</span><br>
+                <span class="label">交易哈希:</span> <span class="value">${receipt.transactionHash}</span><br>
+                <span class="label">区块号:</span> <span class="value">${receipt.blockNumber}</span>`);
+        }
+    } catch (err) {
+        showResult('regResult', `<span class="fail">❌ 失败: ${err.message || err}</span>`);
+    }
+}
+
+// ============ 查询作品 ============
+async function queryWork() {
+    const id = parseInt(document.getElementById('queryWorkId').value);
+    if (!id) { showResult('queryResult', '<span class="fail">⚠ 请输入作品ID</span>'); return; }
+
+    try {
+        if (currentMode === 'demo') {
+            const w = works[id];
+            if (!w) { showResult('queryResult', '<span class="fail">❌ 作品不存在</span>'); return; }
+            showResult('queryResult', `<span class="label">标题:</span> <span class="value">${w.title}</span><br>
+                <span class="label">原作引用:</span> <span class="value">${w.sourceRef}</span><br>
+                <span class="label">CID:</span> <span class="value">${w.cid}</span><br>
+                <span class="label">哈希:</span> <span class="value">${w.hash}</span><br>
+                <span class="label">语言:</span> <span class="value">${w.sourceLang} → ${w.targetLang}</span><br>
+                <span class="label">上一版本:</span> <span class="value">${w.parentId || '初版'}</span><br>
+                <span class="label">作者:</span> <span class="value">${w.author}</span><br>
+                <span class="label">时间:</span> <span class="value">${formatTime(w.timestamp)}</span>`);
+        } else {
+            const w = await contract.getWork(id);
+            showResult('queryResult', `<span class="label">标题:</span> <span class="value">${w.title}</span><br>
+                <span class="label">语言:</span> <span class="value">${w.sourceLang} → ${w.targetLang}</span><br>
+                <span class="label">作者:</span> <span class="value">${w.author}</span><br>
+                <span class="label">时间:</span> <span class="value">${formatTime(w.timestamp.toNumber())}</span>`);
+        }
+    } catch (err) {
+        showResult('queryResult', `<span class="fail">❌ 查询失败: ${err.message || err}</span>`);
+    }
+}
+
+// ============ 验证完整性 ============
+async function verifyCopyright() {
+    const id = parseInt(document.getElementById('queryWorkId').value);
+    const hash = document.getElementById('verifyHash').value;
+    if (!id || !hash) { showResult('verifyResult', '<span class="fail">⚠ 请输入作品ID和待验证哈希</span>'); return; }
+
+    try {
+        if (currentMode === 'demo') {
+            const w = works[id];
+            if (!w) { showResult('verifyResult', '<span class="fail">❌ 作品不存在</span>'); return; }
+            const match = w.hash.toLowerCase() === hash.toLowerCase();
+            const isOwner = (w.author === (userAddress || DEMO_ADDRESS));
+            showResult('verifyResult', `<span class="label">版权验证:</span> ${isOwner ? '<span class="success">✅ 是当前用户</span>' : '<span class="fail">❌ 非当前用户</span>'}<br>
+                <span class="label">完整性:</span> ${match ? '<span class="success">✅ 哈希匹配，文件未被篡改</span>' : '<span class="fail">❌ 哈希不匹配，文件已被篡改</span>'}`);
+        } else {
+            const result = await contract.verifyCopyright(id, hash);
+            showResult('verifyResult', `<span class="label">版权验证:</span> ${result.isOwner ? '<span class="success">✅ 是当前用户</span>' : '<span class="fail">❌ 非当前用户</span>'}<br>
+                <span class="label">完整性:</span> ${result.hashMatch ? '<span class="success">✅ 哈希匹配</span>' : '<span class="fail">❌ 哈希不匹配</span>'}<br>
+                <span class="label">持有者:</span> <span class="value">${result.author}</span>`);
+        }
+    } catch (err) {
+        showResult('verifyResult', `<span class="fail">❌ 验证失败: ${err.message || err}</span>`);
+    }
+}
+
+// ============ 授予许可 ============
+async function grantLicense() {
+    const workId = parseInt(document.getElementById('licWorkId').value);
+    const licensee = document.getElementById('licLicensee').value;
+    const territory = document.getElementById('licTerritory').value;
+    const usage = document.getElementById('licUsage').value;
+    const exclusive = document.getElementById('licExclusive').value === 'true';
+    const duration = parseInt(document.getElementById('licDuration').value);
+
+    if (!workId || !licensee) { showResult('licResult', '<span class="fail">⚠ 请填写作品ID和被授权人</span>'); return; }
+
+    try {
+        if (currentMode === 'demo') {
+            licenseCount++;
+            const id = licenseCount;
+            const now = Math.floor(Date.now()/1000);
+            licenses[id] = {
+                workId, licensor: userAddress || DEMO_ADDRESS, licensee,
+                territory, usage, exclusive, startDate: now,
+                endDate: duration === 0 ? 0 : now + duration * 86400,
+                active: true
+            };
+            if (!workLicenses[workId]) workLicenses[workId] = [];
+            workLicenses[workId].push(id);
+            showResult('licResult', `<span class="success">✅ 许可授予成功！许可ID: ${id}</span><br>
+                <span class="label">被授权人:</span> <span class="value">${licensee}</span><br>
+                <span class="label">地域:</span> <span class="value">${territory}</span> | 
+                <span class="label">用途:</span> <span class="value">${usage}</span> | 
+                <span class="label">类型:</span> <span class="value">${exclusive ? '独家' : '非独家'}</span><br>
+                <span class="label">有效期:</span> <span class="value">${duration === 0 ? '永久' : duration + '天'}</span>`);
+        } else {
+            const tx = await contract.grantLicense(workId, licensee, territory, usage, exclusive, duration);
+            const receipt = await tx.wait();
+            showResult('licResult', `<span class="success">✅ 交易已确认！</span><br>
+                <span class="label">交易哈希:</span> <span class="value">${receipt.transactionHash}</span>`);
+        }
+    } catch (err) {
+        showResult('licResult', `<span class="fail">❌ 失败: ${err.message || err}</span>`);
+    }
+}
+
+// ============ 版本链查询 ============
+async function getVersionChain() {
+    const id = parseInt(document.getElementById('chainWorkId').value);
+    if (!id) { showResult('chainResult', '<span class="fail">⚠ 请输入作品ID</span>'); return; }
+
+    try {
+        if (currentMode === 'demo') {
+            const children = versionChains[id] || [];
+            const w = works[id];
+            let html = '<span class="label">版本链:</span><br>';
+            if (w && w.parentId > 0) {
+                html += `<span class="value">v${w.parentId}</span> (${works[w.parentId]?.title || '未知'}) → `;
+            }
+            html += `<span class="value" style="color:#a78bfa">v${id}</span> (${w?.title || '未知'})`;
+            children.forEach(cid => {
+                html += ` → <span class="value">v${cid}</span> (${works[cid]?.title || '未知'})`;
+            });
+            html += `<br><span class="label">衍生版本数:</span> <span class="value">${children.length}</span>`;
+            if (children.length === 0) html += `<br><span style="color:#888">暂无衍生版本</span>`;
+            showResult('chainResult', html);
+        } else {
+            const chain = await contract.getVersionChain(id);
+            showResult('chainResult', `<span class="label">衍生版本IDs:</span> <span class="value">[${chain.map(v => v.toNumber()).join(', ')}]</span><br>
+                <span class="label">衍生版本数:</span> <span class="value">${chain.length}</span>`);
+        }
+    } catch (err) {
+        showResult('chainResult', `<span class="fail">❌ 查询失败: ${err.message || err}</span>`);
+    }
+}
+
+// ============ 许可列表 ============
+async function getWorkLicenses() {
+    const id = parseInt(document.getElementById('chainWorkId').value);
+    if (!id) { showResult('chainResult', '<span class="fail">⚠ 请输入作品ID</span>'); return; }
+
+    try {
+        if (currentMode === 'demo') {
+            const lics = workLicenses[id] || [];
+            let html = `<span class="label">作品 #${id} 的许可列表:</span><br>`;
+            if (lics.length === 0) {
+                html += '<span style="color:#888">暂无许可记录</span>';
+            } else {
+                lics.forEach(lid => {
+                    const l = licenses[lid];
+                    html += `<div style="margin:4px 0;padding:6px;background:rgba(0,0,0,0.15);border-radius:4px;font-size:12px;">`;
+                    html += `许可#${lid} | ${l.licensee.slice(0,10)}... | ${l.territory} | ${l.usage} | ${l.exclusive ? '独家' : '非独家'} | `;
+                    html += l.active ? '<span class="success">生效中</span>' : '<span class="fail">已撤销</span>';
+                    html += '</div>';
+                });
+            }
+            showResult('chainResult', html);
+        } else {
+            const lics = await contract.getWorkLicenses(id);
+            showResult('chainResult', `<span class="label">许可IDs:</span> <span class="value">[${lics.map(v => v.toNumber()).join(', ')}]</span>`);
+        }
+    } catch (err) {
+        showResult('chainResult', `<span class="fail">❌ 查询失败: ${err.message || err}</span>`);
+    }
+}
+
+// ============ 译者作品索引 ============
+async function getAuthorWorks() {
+    const addr = document.getElementById('authorAddr').value.trim();
+    if (!addr) { showResult('authorResult', '<span class="fail">⚠ 请输入译者地址</span>'); return; }
+
+    try {
+        if (currentMode === 'demo') {
+            const ids = authorWorks[addr];
+            if (!ids || ids.length === 0) {
+                showResult('authorResult', '<span class="fail">❌ 该译者暂无登记作品</span>');
+                return;
+            }
+            let html = `<span class="label">译者作品总数:</span> <span class="value">${ids.length}</span><br><br>`;
+            ids.forEach(id => {
+                const w = works[id];
+                html += `<div style="margin:4px 0;padding:6px;background:rgba(0,0,0,0.15);border-radius:4px;font-size:12px;">`;
+                html += `作品#${id}: ${w.title} (${w.sourceLang}→${w.targetLang})`;
+                html += `</div>`;
+            });
+            showResult('authorResult', html);
+        } else {
+            const ids = await contract.getAuthorWorks(addr);
+            if (ids.length === 0) {
+                showResult('authorResult', '<span class="fail">❌ 该译者暂无登记作品</span>');
+                return;
+            }
+            let html = `<span class="label">译者作品总数:</span> <span class="value">${ids.length}</span><br><br>`;
+            ids.forEach(id => {
+                html += `<span class="value">作品#${id.toNumber()}</span><br>`;
+            });
+            showResult('authorResult', html);
+        }
+    } catch (err) {
+        showResult('authorResult', `<span class="fail">❌ 查询失败: ${err.message || err}</span>`);
+    }
+}
+
+// 页面加载
+window.addEventListener('load', () => {
+    userAddress = DEMO_ADDRESS;
+});
+</script>
+
+</body>
+</html>
